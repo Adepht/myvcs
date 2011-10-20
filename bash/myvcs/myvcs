@@ -14,7 +14,9 @@ function init {
         else
             mkdir .$fn
             echo "Creating zero revision"
-            echo "0" > ".$fn/count"
+            echo "-1" > ".$fn/count"
+            touch ".$fn/HEAD"
+            touch ".$fn/CUR_HEAD"
         fi
     else
         echo "$fn doesn't exist"
@@ -46,24 +48,19 @@ function commit {
     let "count=count+1"
     echo "$count" > ".$fn/count"
  
-    if [ $count -eq 1 ]
-    then
-        cp $fn  ".$fn/HEAD"
-        exit
-    fi
-   
     diff -u ".$fn/HEAD" "$fn" > ".$fn/$count"
     cp $fn ".$fn/HEAD"
+    cp $fn ".$fn/CUR_HEAD"
 }
 function status {
     check
    
-    if [ cmp -s $fn ".$fn/HEAD" ]
+    if diff $fn ".$fn/CUR_HEAD" > /dev/null ; 
     then
-        echo "Status: modified"
+        echo "Status: stable"
         exit 1
     else
-        echo "Status: stable"
+        echo "Status: modified"
         exit 2
     fi
 }
@@ -72,14 +69,13 @@ function difference {
    
     echo diff -u $fn ".$fn/HEAD"
 }
- 
 function update {
     check
    
     cp ".$fn/HEAD" $fn
     revision=$1
     count=`cat .$fn/count`
-    if [ $revision -gt $count ]  || [ 1 -gt $revision ]
+    if [ $revision -gt $count ]  || [ 0 -gt $revision ]
     then
         echo "Wrong revision number"
         exit
@@ -94,30 +90,34 @@ function update {
             exit
         fi
         patch -uR $fn ".$fn/$i"
-        echo "Updated"
         let "i=i-1"
     done
+    cp $fn ".$fn/CUR_HEAD"
+}
+function remove {
+    if [ -d ".$fn" ]
+    then 
+        rm -r .$fn
+    fi
 }
 case $1 in
     'init')
-        echo "Init called"
         init
         ;;
     "commit")
-        echo "Commit called"
         commit
         ;;
     "status")
-        echo "Status called"
         status
         ;;
     "diff")  
-        echo "Diff called"
         difference
         ;;
     "update")
-        echo "Update called"
         update $3
+        ;;
+    "remove")
+        remove
         ;;
     *)  
         echo "Incorrect command"
