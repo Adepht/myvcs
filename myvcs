@@ -1,0 +1,125 @@
+#!/bin/bash
+fn=$2
+function init {
+    if [ -r $fn ]
+    then
+        if [ -a .$fn ]
+        then
+            if [ -d .$fn ]
+            then
+                echo "Repo already exists"
+            else
+                echo "File named .$2 exists"
+            fi
+        else
+            mkdir .$fn
+            echo "Creating zero revision"
+            echo "0" > ".$fn/count"
+        fi
+    else
+        echo "$fn doesn't exist"
+    fi
+}
+function check {
+    if [ ! -r $fn ]
+    then
+        echo "$fn doesn't exist"
+        exit 1
+    fi
+ 
+    if [ ! -d ".$fn" ]
+    then
+        echo "Repo doesn't exist"
+        exit 2
+    fi
+ 
+    if [ ! -r ".$fn/count" ]
+    then
+        echo "Repo is broken"
+        exit 3
+    fi
+}
+function commit {
+    check
+   
+    count=`cat .$fn/count`
+    let "count=count+1"
+    echo "$count" > ".$fn/count"
+ 
+    if [ $count -eq 1 ]
+    then
+        cp $fn  ".$fn/HEAD"
+        exit
+    fi
+   
+    diff -u ".$fn/HEAD" "$fn" > ".$fn/$count"
+    cp $fn ".$fn/HEAD"
+}
+function status {
+    check
+   
+    if [ cmp -s $fn ".$fn/HEAD" ]
+    then
+        echo "Status: modified"
+        exit 1
+    else
+        echo "Status: stable"
+        exit 2
+    fi
+}
+function difference {
+    check
+   
+    echo diff -u $fn ".$fn/HEAD"
+}
+ 
+function update {
+    check
+   
+    cp ".$fn/HEAD" $fn
+    revision=$1
+    count=`cat .$fn/count`
+    if [ $revision -gt $count ]  || [ 1 -gt $revision ]
+    then
+        echo "Wrong revision number"
+        exit
+    fi
+    i=$count
+ 
+    while [ $i -gt $revision ]
+    do
+        if [ ! -r ".$fn/$i" ]
+        then
+            echo "Repo is broken"
+            exit
+        fi
+        patch -uR $fn ".$fn/$i"
+        echo "Updated"
+        let "i=i-1"
+    done
+}
+case $1 in
+    'init')
+        echo "Init called"
+        init
+        ;;
+    "commit")
+        echo "Commit called"
+        commit
+        ;;
+    "status")
+        echo "Status called"
+        status
+        ;;
+    "diff")  
+        echo "Diff called"
+        difference
+        ;;
+    "update")
+        echo "Update called"
+        update $3
+        ;;
+    *)  
+        echo "Incorrect command"
+        ;;
+esac
