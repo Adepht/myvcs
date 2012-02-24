@@ -1,0 +1,30 @@
+#!/bin/bash
+
+make_pass() {
+    pass=$i
+    while [ ${#pass} -ne 4 ]
+    do
+        pass="0$pass"
+    done
+}
+
+i=0
+
+while [ $i -le 9999 ]
+do
+    make_pass
+    echo "Trying $pass"
+    rm -f tex2html-test.tar
+    
+    if 7z x -p $pass tex2html-test.tar.7z >/dev/null 2>&1
+    then
+        echo "Success, $pwd"
+        tar -xf tex2html-test.tar
+        exit 0
+    else
+        i=$[i + 1]
+    fi
+done
+
+echo "Failure"
+exit 1

@@ -1,0 +1,63 @@
+#!/bin/bash
+pClose() {
+    if [ $pOpened -eq 1 ]
+    then
+        echo "</p>"
+        pOpened=0
+    fi
+}
+
+read -r title
+
+cat << EOF
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>$title</title>
+</head>
+<body>
+EOF
+
+pOpened=0
+
+
+while read -r line
+do
+    line=`echo "$line" | sed -e 's/.*[&@#%\$].*//'`                        #удаляем строку по непонятным символам
+    line=`echo "$line" | sed -e 's/   */ /g'`                              #заменяем 2+ проблема одним
+    if [ ${#line} -gt 0 ]                                                  #если непустая строка
+    then
+        if echo "$line" | grep "^\\\section{.*}$" >/dev/null 2>&1          #если секция
+        then
+            pClose
+            line=${line:9:$[${#line} - 10]}
+            echo "<h1>$line</h1>"
+        else
+            if echo "$line" | grep "^\\\subsection{.*}$" >/dev/null 2>&1   #если подсекция
+            then
+                pClose
+                line=${line:12:$[${#line} - 13]}
+                echo "<h2>$line</h2>"
+            else                                                           #если просто строка
+                if [ $pOpened -eq 0 ]                                      #если параграф не открыт
+                then
+                    echo -n "<p>$line"
+                    pOpened=1
+                else                                                       #если открыт
+                    echo 
+                    echo -n "$line"
+                fi
+            fi
+        fi
+    else                                                                   #закрыть параграф если пустая строка
+        pClose
+    fi
+done
+
+
+pClose
+
+cat << EOF
+</body>
+</html>
+EOF
